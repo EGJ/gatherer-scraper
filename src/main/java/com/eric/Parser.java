@@ -27,8 +27,11 @@ class Parser {
             while (matcher.find()) {
                 String group = matcher.group(1).replaceAll("\"", "");
                 //Ignore all Non-mana symbols (e.g. Tap/Untap symbols)
-                if (!colors.contains(group) && !group.matches("\\d+") && !group.equals("X")) {
-                    continue;
+                if (!group.matches("\\d+") && !group.equals("X")) {
+                    long colorsContained = colors.stream().filter(group::contains).count();
+                    if(colorsContained == 0){
+                        continue;
+                    }
                 }
 
                 manaCost.append(group);
