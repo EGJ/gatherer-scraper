@@ -18,7 +18,7 @@ class WebScraper {
     private static final int driverSleepMillis = Integer.parseInt(Props.properties.getProperty("webdriver.sleep.millis"));
 
     static {
-        System.setProperty("webdriver.gecko.driver", "C:\\Program Files (x86)\\Selenium-Webdriver\\geckodriver-v0.23.0-win64\\geckodriver.exe");
+        System.setProperty("webdriver.gecko.driver", Props.properties.getProperty("webdriver.gecko.driver.location"));
 
         driver = new FirefoxDriver();
         //Only waits for initial page load
@@ -40,6 +40,7 @@ class WebScraper {
         String rulesTextColorIdentity;
         String manaCostColorIdentity;
         String colorIdentity = null;
+        boolean validCommander;
 
         try {
             cardType = getCardType();
@@ -53,15 +54,20 @@ class WebScraper {
         } catch (NoSuchElementException e) {
             return null;
         }
+        List<String> rulesTextStrings = getRulesTextStrings();
 
         colorIndicator = getColorIndicator();
         manaCostColorIdentity = Parser.getColorIdentity(manaCost);
-        rulesTextColorIdentity = getRulesTextColorIdentity();
+        rulesTextColorIdentity = getRulesTextColorIdentity(rulesTextStrings);
         if (colorIdentity == null) {
             colorIdentity = Parser.getColorIdentity(manaCostColorIdentity + rulesTextColorIdentity + colorIndicator);
         }
 
-        return new CardInfo(cardName, cardType, manaCost, colorIdentity, colorIndicator, manaCostColorIdentity, rulesTextColorIdentity);
+        //TODO: Do not consider cards like Budoka Gardener and Elbrus, the Binding Blade valid commanders
+        validCommander = cardType.contains("Legendary") && cardType.contains("Creature");
+        validCommander |= isValidPlaneswalkerCommander(rulesTextStrings);
+
+        return new CardInfo(cardName, cardType, manaCost, colorIdentity, colorIndicator, manaCostColorIdentity, rulesTextColorIdentity, validCommander);
     }
 
     //Will throw an exception if the card name is invalid
@@ -69,10 +75,17 @@ class WebScraper {
         try {
             return driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
         } catch (NoSuchElementException e) {
-            String cardType1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl02_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
-            String cardType2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
+            try {
+                String cardType1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl02_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
+                String cardType2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
 
-            return cardType1 + " // " + cardType2;
+                return cardType1 + " // " + cardType2;
+            } catch (NoSuchElementException e2) {
+                String cardType1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
+                String cardType2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_typeRow")).findElement(By.className("value")).getAttribute("innerHTML").stripLeading();
+
+                return cardType1 + " // " + cardType2;
+            }
         }
     }
 
@@ -84,24 +97,32 @@ class WebScraper {
 
             manaRowValues.add(manaRowValue.replaceAll("Variable Colorless", "X"));
         } catch (NoSuchElementException e) {
-            //If That failed, the mana cost of any card with a mana cost will be found in the first alternate manaRow (E.g. // cards and flip cards)
-            //Lands will cause this to throw a NoSuchElementException
-            String manaRowValue1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl02_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
-            manaRowValues.add(manaRowValue1.replaceAll("Variable Colorless", "X"));
-
-            //Try to get the second alternate manaRow (E.g. the second half of a // card)
             try {
-                String manaRowValue2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
-                manaRowValues.add(manaRowValue2.replaceAll("Variable Colorless", "X"));
+                //If That failed, the mana cost of any card with a mana cost will (normally) be found in the first alternate manaRow (E.g. // cards and flip cards)
+                //Lands will cause this to throw a NoSuchElementException
+                String manaRowValue1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl02_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                manaRowValues.add(manaRowValue1.replaceAll("Variable Colorless", "X"));
+
+                //Try to get the second alternate manaRow (E.g. the second half of a // card)
+                try {
+                    String manaRowValue2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                    manaRowValues.add(manaRowValue2.replaceAll("Variable Colorless", "X"));
+                } catch (NoSuchElementException e2) {
+                    //Card does not have a second alternate manaRow, ignore.
+                }
             } catch (NoSuchElementException e2) {
-                //Card does not have a second alternate manaRow, ignore.
+                String manaRowValue1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                String manaRowValue2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
+
+                manaRowValues.add(manaRowValue1.replaceAll("Variable Colorless", "X"));
+                manaRowValues.add(manaRowValue2.replaceAll("Variable Colorless", "X"));
             }
         }
 
         return manaRowValues;
     }
 
-    //Most cards with a color indicator will be flip cards, e.g. Nicol Bolas, the Arisen. So the ct103 colorIndicator will be searched first.
+    //Most cards with a color indicator will be flip cards, e.g. Nicol Bolas, the Arisen. So the ctl03 colorIndicator will be searched first.
     //Other cards with a color indicator, e.g. Evermind, will have them on the front - though this seems to be incredibly rare.
     private static String getColorIndicator() {
         try {
@@ -115,7 +136,11 @@ class WebScraper {
         }
     }
 
-    private static String getRulesTextColorIdentity() {
+    /**
+     * This method is used for both determining a cards color identity (if mana symbols appear in its rules text),
+     * and for determining whether or not a planeswalker card can be a player's commander (e.g. Lord Windgrace, or Rowan Kenrith // Will Kenrith).
+     */
+    private static List<String> getRulesTextStrings() {
         ArrayList<String> rulesTextStrings = new ArrayList<>(2);
         //Try to get the rules text cost of a "Normal" Card
         try {
@@ -130,11 +155,18 @@ class WebScraper {
                 rulesTextStrings.add(rulesTextString1);
                 rulesTextStrings.add(rulesTextString2);
             } catch (NoSuchElementException e2) {
-                //Card has no rules text
-                return null;
+                String rulesTextString1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                String rulesTextString2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
+
+                rulesTextStrings.add(rulesTextString1);
+                rulesTextStrings.add(rulesTextString2);
             }
         }
 
+        return rulesTextStrings;
+    }
+
+    private static String getRulesTextColorIdentity(List<String> rulesTextStrings) {
         String rulesTextCosts = Parser.parseCosts(rulesTextStrings);
 
         if (rulesTextCosts == null) {
@@ -142,6 +174,10 @@ class WebScraper {
         } else {
             return Parser.getColorIdentity(rulesTextCosts);
         }
+    }
+
+    private static boolean isValidPlaneswalkerCommander(List<String> rulesTextStrings) {
+        return rulesTextStrings.stream().anyMatch(rulesTextString -> rulesTextString.contains("can be your commander"));
     }
 
     //Returns a list of card names. One for each color combination given.

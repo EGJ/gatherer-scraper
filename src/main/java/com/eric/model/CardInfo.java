@@ -13,6 +13,7 @@ public class CardInfo {
     private String colorIndicator;
     private String manaCostColorIdentity;
     private String rulesTextColorIdentity;
+    private Boolean validCommander;
 
     @JsonCreator
     public CardInfo(@JsonProperty("cardName") String cardName,
@@ -21,7 +22,8 @@ public class CardInfo {
                     @JsonProperty("colorIdentity") String colorIdentity,
                     @JsonProperty("colorIndicator") String colorIndicator,
                     @JsonProperty("manaCostColorIdentity") String manaCostColorIdentity,
-                    @JsonProperty("rulesTextColorIdentity") String rulesTextColorIdentity) {
+                    @JsonProperty("rulesTextColorIdentity") String rulesTextColorIdentity,
+                    @JsonProperty("validCommander") Boolean validCommander) {
         this.cardName = cardName;
         this.cardType = cardType;
         this.manaCost = manaCost;
@@ -29,6 +31,7 @@ public class CardInfo {
         this.colorIndicator = colorIndicator;
         this.manaCostColorIdentity = manaCostColorIdentity;
         this.rulesTextColorIdentity = rulesTextColorIdentity;
+        this.validCommander = validCommander;
     }
 
     public void setCardName(String cardName) {
@@ -61,6 +64,10 @@ public class CardInfo {
 
     public String getRulesTextColorIdentity() {
         return rulesTextColorIdentity;
+    }
+
+    public Boolean getValidCommander() {
+        return validCommander;
     }
 
     @Override

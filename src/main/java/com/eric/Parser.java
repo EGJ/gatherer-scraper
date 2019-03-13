@@ -29,7 +29,7 @@ class Parser {
                 //Ignore all Non-mana symbols (e.g. Tap/Untap symbols)
                 if (!group.matches("\\d+") && !group.equals("X")) {
                     long colorsContained = colors.stream().filter(group::contains).count();
-                    if(colorsContained == 0){
+                    if (colorsContained == 0) {
                         continue;
                     }
                 }

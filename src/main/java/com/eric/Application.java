@@ -1,5 +1,6 @@
 package com.eric;
 
+import com.eric.common.Props;
 import com.eric.model.CardInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,14 +17,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Application {
+
     public static void main(String[] args) throws IOException {
+        searchForCards();
+
+        if (Boolean.parseBoolean(Props.properties.getProperty("print-valid-commanders"))) {
+            printValidCommanders();
+        }
+    }
+
+    private static void searchForCards() throws IOException {
         Set<CardInfo> cachedValues = new HashSet<>(readCachedValues());
 
         Set<String> cardsToSearchFor = new HashSet<>(FileUtils.readLines(new File("src/main/resources/CardsToSearchFor.txt"), "UTF-8"));
         Set<String> invalidCardNames = new HashSet<>();
 
         Set<CardInfo> cardInfoSet = cardsToSearchFor.stream()
-                .filter(cardName -> !cachedValues.contains(new CardInfo(cardName, null, null, null, null, null, null)) && !cardName.isBlank())
+                .filter(cardName -> !cachedValues.contains(new CardInfo(cardName, null, null, null, null, null, null, null)) && !cardName.isBlank())
                 .map(cardName -> {
                     //For all split cards, get the name of the first portion
                     String cardNameToSearchFor = cardName.replaceFirst(" ?//.*", "");
@@ -59,6 +69,13 @@ public class Application {
 
         cachedValues.addAll(cardInfoSet);
         writeCachedValues(cachedValues);
+    }
+
+    //TODO: Allow printing of valid commanders by color identity
+    private static void printValidCommanders() {
+        readCachedValues().stream()
+                .filter(CardInfo::getValidCommander)
+                .forEach(cardInfo -> System.out.println(cardInfo.getCardName()));
     }
 
     private static void writeCachedValues(Set<CardInfo> augmentedCardNames) throws IOException {
