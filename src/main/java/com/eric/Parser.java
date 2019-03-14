@@ -1,5 +1,7 @@
 package com.eric;
 
+import com.eric.common.Utility;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -8,14 +10,6 @@ import java.util.regex.Pattern;
 class Parser {
 
     private static Pattern pattern = Pattern.compile("alt=(.*?) align");
-
-    private static ArrayList<String> colors = new ArrayList<>(5) {{
-        add("Black");
-        add("Blue");
-        add("Green");
-        add("Red");
-        add("White");
-    }};
 
     private static ArrayList<String> parseCostsIndividually(List<String> strings) {
         ArrayList<String> manaCosts = new ArrayList<>();
@@ -28,7 +22,7 @@ class Parser {
                 String group = matcher.group(1).replaceAll("\"", "");
                 //Ignore all Non-mana symbols (e.g. Tap/Untap symbols)
                 if (!group.matches("\\d+") && !group.equals("X")) {
-                    long colorsContained = colors.stream().filter(group::contains).count();
+                    long colorsContained = Utility.colors.stream().filter(group::contains).count();
                     if (colorsContained == 0) {
                         continue;
                     }
@@ -71,7 +65,7 @@ class Parser {
             return null;
         } else {
             StringBuilder colorIdentity = new StringBuilder();
-            colors.forEach(color -> addToIdentityIfContained(manaCost, colorIdentity, color));
+            Utility.colors.forEach(color -> addToIdentityIfContained(manaCost, colorIdentity, color));
             if (colorIdentity.length() != 0) {
                 //Remove trailing ","
                 colorIdentity.delete(colorIdentity.length() - 1, colorIdentity.length());
@@ -82,8 +76,8 @@ class Parser {
         }
     }
 
-    private static void addToIdentityIfContained(String manaCost, StringBuilder colorIdentity, String color) {
-        if (manaCost.contains(color)) {
+    static void addToIdentityIfContained(String manaCost, StringBuilder colorIdentity, String color) {
+        if (manaCost.toLowerCase().contains(color.toLowerCase())) {
             colorIdentity.append(color);
             colorIdentity.append(',');
         }

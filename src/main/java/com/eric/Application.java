@@ -1,6 +1,7 @@
 package com.eric;
 
 import com.eric.common.Props;
+import com.eric.common.Utility;
 import com.eric.model.CardInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -71,10 +72,39 @@ public class Application {
         writeCachedValues(cachedValues);
     }
 
-    //TODO: Allow printing of valid commanders by color identity
     private static void printValidCommanders() {
+        String validColors = Props.properties.getProperty("print-valid-commanders.color-identity");
+        boolean strictColorIdentity = Boolean.parseBoolean(Props.properties.getProperty("print-valid-commanders.strict-color-identity"));
+
+        StringBuilder colorIdentity = new StringBuilder();
+
+        if (validColors.isBlank()) {
+            Utility.colors.forEach(color -> {
+                colorIdentity.append(color);
+                colorIdentity.append(",");
+            });
+        } else {
+            Utility.colors.forEach(color -> Parser.addToIdentityIfContained(validColors, colorIdentity, color));
+        }
+
+        if (!strictColorIdentity || validColors.equalsIgnoreCase("Colorless")) {
+            colorIdentity.append("Colorless");
+        } else if (colorIdentity.length() == 0) {
+            System.out.println("No recognized colors in color identity.");
+        } else {
+            //Remove trailing ","
+            colorIdentity.delete(colorIdentity.length() - 1, colorIdentity.length());
+        }
+
         readCachedValues().stream()
                 .filter(CardInfo::getValidCommander)
+                .filter(cardInfo -> {
+                    if (strictColorIdentity) {
+                        return cardInfo.getColorIdentity().equals(colorIdentity.toString());
+                    } else {
+                        return colorIdentity.toString().contains(cardInfo.getColorIdentity());
+                    }
+                })
                 .forEach(cardInfo -> System.out.println(cardInfo.getCardName()));
     }
 
