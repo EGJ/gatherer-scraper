@@ -63,8 +63,9 @@ class WebScraper {
             colorIdentity = Parser.getColorIdentity(manaCostColorIdentity + rulesTextColorIdentity + colorIndicator);
         }
 
-        //TODO: Do not consider cards like Budoka Gardener and Elbrus, the Binding Blade valid commanders
-        validCommander = cardType.contains("Legendary") && cardType.contains("Creature");
+        //When determining whether or not a commander is valid, only consider the first part of the card if it is a flip card
+        String commanderCardType = cardType.split("//")[0];
+        validCommander = commanderCardType.contains("Legendary") && commanderCardType.contains("Creature");
         validCommander |= isValidPlaneswalkerCommander(rulesTextStrings);
 
         return new CardInfo(cardName, cardType, manaCost, colorIdentity, colorIndicator, manaCostColorIdentity, rulesTextColorIdentity, validCommander);
@@ -149,17 +150,23 @@ class WebScraper {
             rulesTextStrings.add(rulesTextString);
         } catch (NoSuchElementException e) {
             try {
+                //Because, for example, Homura, Human Ascendant does not have rules text for its second half (gatherer mistake), a safer execution order is performed to guarantee a valid result for that case.
                 String rulesTextString1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl02_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
-                String rulesTextString2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
-
                 rulesTextStrings.add(rulesTextString1);
+
+                String rulesTextString2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
                 rulesTextStrings.add(rulesTextString2);
             } catch (NoSuchElementException e2) {
-                String rulesTextString1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
-                String rulesTextString2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                try {
+                    String rulesTextString1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                    String rulesTextString2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_textRow")).findElement(By.className("value")).getAttribute("innerHTML");
 
-                rulesTextStrings.add(rulesTextString1);
-                rulesTextStrings.add(rulesTextString2);
+                    rulesTextStrings.add(rulesTextString1);
+                    rulesTextStrings.add(rulesTextString2);
+                } catch (NoSuchElementException e3) {
+                    //Card has no rules text
+                    return rulesTextStrings;
+                }
             }
         }
 
