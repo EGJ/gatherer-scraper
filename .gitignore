@@ -1,4 +1,6 @@
+*.iml
 .idea/
 target/
 output/
-*.iml
+venv/
+__pycache__/

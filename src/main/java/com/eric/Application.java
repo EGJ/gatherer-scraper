@@ -5,11 +5,16 @@ import com.eric.common.Utility;
 import com.eric.model.CardInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -19,11 +24,45 @@ import java.util.stream.Stream;
 
 public class Application {
 
-    public static void main(String[] args) throws IOException {
-        searchForCards();
+    public static void main(String[] args) throws Exception {
+        if(Boolean.parseBoolean(Props.properties.getProperty("sync-with-keep"))) {
+            String projectPath = Paths.get("").toAbsolutePath().toString();
+            String pythonFileName = "mtg_keep_sync";
+            File pythonFile = new File(projectPath, pythonFileName + ".py");
+
+            //Add all new card names from keep to CardsToSearchFor.txt
+            CommandLine getNewFilesToUpdate = new CommandLine("python")
+                    .addArgument("-c")
+                    .addArgument(String.format("import %s; %s.add_keep_files_to_cards_to_search_for()", pythonFileName, pythonFileName));
+            runPythonCommand(getNewFilesToUpdate);
+
+            searchForCards();
+
+            //Sync cards from output directory to keep
+            CommandLine syncCardsWithKeep = new CommandLine("python")
+                    .addArgument(pythonFile.getAbsolutePath());
+            if(Boolean.parseBoolean(Props.properties.getProperty("sync-with-keep.master-file-only"))) {
+                syncCardsWithKeep.addArgument("--masterFileOnly");
+            }
+            runPythonCommand(syncCardsWithKeep);
+        }else{
+            searchForCards();
+        }
 
         if (Boolean.parseBoolean(Props.properties.getProperty("print-valid-commanders"))) {
             printValidCommanders();
+        }
+    }
+
+    private static void runPythonCommand(CommandLine commandLine){
+        DefaultExecutor executor = new DefaultExecutor();
+
+        try {
+            //Apparently non-0 exit codes cause an exception to be thrown. Therefore the return value is unhelpful?
+            executor.execute(commandLine);
+            System.out.println("Python command " + commandLine + " successfully completed");
+        } catch (IOException e) {
+            System.out.println("Python process exited abnormally.");
         }
     }
 
