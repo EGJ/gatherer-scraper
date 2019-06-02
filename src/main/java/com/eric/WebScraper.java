@@ -112,11 +112,15 @@ class WebScraper {
                     //Card does not have a second alternate manaRow, ignore.
                 }
             } catch (NoSuchElementException e2) {
-                String manaRowValue1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
-                String manaRowValue2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                try {
+                    String manaRowValue1 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl03_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
+                    String manaRowValue2 = driver.findElement(By.id("ctl00_ctl00_ctl00_MainContent_SubContent_SubContent_ctl04_manaRow")).findElement(By.className("value")).getAttribute("innerHTML");
 
-                manaRowValues.add(manaRowValue1.replaceAll("Variable Colorless", "X"));
-                manaRowValues.add(manaRowValue2.replaceAll("Variable Colorless", "X"));
+                    manaRowValues.add(manaRowValue1.replaceAll("Variable Colorless", "X"));
+                    manaRowValues.add(manaRowValue2.replaceAll("Variable Colorless", "X"));
+                } catch (NoSuchElementException e3) {
+                    manaRowValues.add("0");
+                }
             }
         }
 
