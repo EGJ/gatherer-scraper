@@ -61,10 +61,6 @@ def parse_opts_is_master_file_only() -> bool:
     return False
 
 
-def call_from_java():
-    print("called from java")
-
-
 def add_keep_files_to_cards_to_search_for():
     mtg_label = find_or_create_label('mtg')
 
