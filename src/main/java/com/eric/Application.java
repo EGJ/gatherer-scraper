@@ -7,13 +7,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
@@ -25,7 +23,7 @@ import java.util.stream.Stream;
 public class Application {
 
     public static void main(String[] args) throws Exception {
-        if(Boolean.parseBoolean(Props.properties.getProperty("sync-with-keep"))) {
+        if (Boolean.parseBoolean(Props.properties.getProperty("sync-with-keep"))) {
             String projectPath = Paths.get("").toAbsolutePath().toString();
             String pythonFileName = "mtg_keep_sync";
             File pythonFile = new File(projectPath, pythonFileName + ".py");
@@ -41,11 +39,11 @@ public class Application {
             //Sync cards from output directory to keep
             CommandLine syncCardsWithKeep = new CommandLine("python")
                     .addArgument(pythonFile.getAbsolutePath());
-            if(Boolean.parseBoolean(Props.properties.getProperty("sync-with-keep.master-file-only"))) {
+            if (Boolean.parseBoolean(Props.properties.getProperty("sync-with-keep.master-file-only"))) {
                 syncCardsWithKeep.addArgument("--masterFileOnly");
             }
             runPythonCommand(syncCardsWithKeep);
-        }else{
+        } else {
             searchForCards();
         }
 
@@ -54,7 +52,7 @@ public class Application {
         }
     }
 
-    private static void runPythonCommand(CommandLine commandLine){
+    private static void runPythonCommand(CommandLine commandLine) {
         DefaultExecutor executor = new DefaultExecutor();
 
         try {
@@ -69,11 +67,14 @@ public class Application {
     private static void searchForCards() throws IOException {
         Set<CardInfo> cachedValues = new HashSet<>(readCachedValues());
 
-        Set<String> cardsToSearchFor = new HashSet<>(FileUtils.readLines(new File("src/main/resources/CardsToSearchFor.txt"), "UTF-8"));
+        Set<String> cardsToSearchFor = new HashSet<>(FileUtils.readLines(new File("src/main/resources/CardsToSearchFor.txt"), "UTF-8"))
+                .stream()
+                .map(Utility::toTitleCase)
+                .filter(cardName -> cardName != null && !cachedValues.contains(new CardInfo(cardName, null, null, null, null, null, null, null)))
+                .collect(Collectors.toSet());
         Set<String> invalidCardNames = new HashSet<>();
 
         Set<CardInfo> cardInfoSet = cardsToSearchFor.stream()
-                .filter(cardName -> !cachedValues.contains(new CardInfo(cardName, null, null, null, null, null, null, null)) && !cardName.isBlank())
                 .map(cardName -> {
                     //For all split cards, get the name of the first portion
                     String cardNameToSearchFor = cardName.replaceFirst(" ?//.*", "");

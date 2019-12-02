@@ -79,12 +79,12 @@ public class CardInfo {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        CardInfo that = (CardInfo) o;
-        return cardName.equals(that.cardName);
+        CardInfo other = (CardInfo) o;
+        return cardName.toLowerCase().equals(other.cardName.toLowerCase());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(cardName);
+        return Objects.hash(cardName.toLowerCase());
     }
 }
