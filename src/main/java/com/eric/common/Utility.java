@@ -21,7 +21,7 @@ public class Utility {
             return null;
         }
 
-        return Arrays.stream(sentence.toLowerCase().strip().split(" "))
+        String titleCaseString = Arrays.stream(sentence.toLowerCase().strip().split(" "))
                 .map(word -> {
                     if (excludedWords.contains(word)) {
                         return word;
@@ -30,5 +30,7 @@ public class Utility {
                     }
                 })
                 .collect(Collectors.joining(" "));
+
+        return Character.toTitleCase(titleCaseString.charAt(0)) + titleCaseString.substring(1);
     }
 }
