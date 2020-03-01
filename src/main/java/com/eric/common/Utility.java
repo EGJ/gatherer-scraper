@@ -21,7 +21,7 @@ public class Utility {
             return null;
         }
 
-        String titleCaseString = Arrays.stream(sentence.toLowerCase().strip().split(" "))
+        String titleCaseString = Arrays.stream(sentence.toLowerCase().strip().split("\\s+"))
                 .map(word -> {
                     if (excludedWords.contains(word)) {
                         return word;
