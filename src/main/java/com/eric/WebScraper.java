@@ -8,8 +8,15 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
+import javax.imageio.ImageIO;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -44,6 +51,7 @@ class WebScraper {
         boolean validCommander;
 
         try {
+            saveCardImages(cardName);
             cardType = getCardType();
 
             if (cardType.equals("Land")) {
@@ -70,6 +78,53 @@ class WebScraper {
         validCommander |= isValidPlaneswalkerCommander(rulesTextStrings);
 
         return new CardInfo(cardName, cardType, manaCost, colorIdentity, colorIndicator, manaCostColorIdentity, rulesTextColorIdentity, validCommander);
+    }
+
+    /**
+     * This can also be done via right-click -> save image (i.e. new Actions(driver).contextClick(webElement)...).
+     * As far as I can tell, this would avoid additional web requests, but will probably interfere with other tasks
+     * if the user is running this program in the background, for example.
+     */
+    private static void saveCardImages(String cardName) {
+        File file = new File("output/cards/images/" + cardName + ".png");
+
+        //Only extract and save images if it has not already been done and the appropriate property is enabled.
+        if (file.exists() || !Boolean.parseBoolean(Props.properties.getProperty("extract-images"))) {
+            return;
+        }
+
+        driver.findElements(By.cssSelector("[id$=cardImage]")).stream()
+                .map(webElement -> webElement.getAttribute("src"))
+                .distinct()//Prevents cards such as "Wear // Tear" and other split cards from being pulled twice
+                .map(url -> {
+                    try {
+                        URL imageURL = new URL(url);
+                        return ImageIO.read(imageURL);
+                    } catch (IOException ex) {
+                        throw new RuntimeException("Unable to read image: ", ex);
+                    }
+                })
+                .filter(Objects::nonNull)
+                .reduce(WebScraper::joinBufferedImage)
+                .ifPresent(image -> {
+                    try {
+                        ImageIO.write(image, "png", file);
+                    } catch (IOException ex) {
+                        throw new RuntimeException("Unable to save image: ", ex);
+                    }
+                });
+    }
+
+    public static BufferedImage joinBufferedImage(BufferedImage img1, BufferedImage img2) {
+        int width = img1.getWidth() + img2.getWidth();
+        int height = Math.max(img1.getHeight(), img2.getHeight());
+        //create a new buffer and draw two image into the new image
+        BufferedImage newImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics g = newImage.createGraphics();
+        g.drawImage(img1, 0, 0, null);
+        g.drawImage(img2, img1.getWidth(), 0, null);
+        g.dispose();
+        return newImage;
     }
 
     //Will throw an exception if the card name is invalid
