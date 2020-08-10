@@ -124,8 +124,6 @@ public class Application {
 
                     if (cardInfo == null) {
                         invalidCardNames.add(cardName);
-                    } else {
-                        cardInfo.setCardName(cardName);
                     }
                     return cardInfo;
                 })

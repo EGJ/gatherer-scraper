@@ -33,15 +33,15 @@ class WebScraper {
         //driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
     }
 
-    static CardInfo getCardDetails(String cardName) {
+    static CardInfo getCardDetails(String shortCardName) {
         try {
             TimeUnit.MILLISECONDS.sleep(driverSleepMillis);
         } catch (InterruptedException e) {
             //
         }
-        driver.get("http://gatherer.wizards.com/Pages/Card/Details.aspx?name=" + cardName);
+        driver.get("http://gatherer.wizards.com/Pages/Card/Details.aspx?name=" + shortCardName);
 
-
+        String fullCardName;
         String cardType;
         String manaCost;
         String colorIndicator;
@@ -51,7 +51,8 @@ class WebScraper {
         boolean validCommander;
 
         try {
-            saveCardImages(cardName);
+            fullCardName = getCardName();
+            saveCardImages(shortCardName);
             cardType = getCardType();
 
             if (cardType.equals("Land")) {
@@ -77,13 +78,16 @@ class WebScraper {
         validCommander = commanderCardType.contains("Legendary") && commanderCardType.contains("Creature");
         validCommander |= isValidPlaneswalkerCommander(rulesTextStrings);
 
-        return new CardInfo(cardName, cardType, manaCost, colorIdentity, colorIndicator, manaCostColorIdentity, rulesTextColorIdentity, validCommander);
+        return new CardInfo(fullCardName, cardType, manaCost, colorIdentity, colorIndicator, manaCostColorIdentity, rulesTextColorIdentity, validCommander);
     }
 
     /**
      * This can also be done via right-click -> save image (i.e. new Actions(driver).contextClick(webElement)...).
      * As far as I can tell, this would avoid additional web requests, but will probably interfere with other tasks
      * if the user is running this program in the background, for example.
+     *
+     * Note: Split cards such as "Grind // Dust" and all other cards with "//" in their name will be saved using the
+     * first portion of the cards name due to filename restrictions.
      */
     private static void saveCardImages(String cardName) {
         File file = new File("output/cards/images/" + cardName + ".png");
@@ -125,6 +129,10 @@ class WebScraper {
         g.drawImage(img2, img1.getWidth(), 0, null);
         g.dispose();
         return newImage;
+    }
+
+    private static String getCardName() {
+        return driver.findElement(By.cssSelector("[id=ctl00_ctl00_ctl00_MainContent_SubContent_SubContentHeader_subtitleDisplay]")).getAttribute("innerHTML");
     }
 
     //Will throw an exception if the card name is invalid
