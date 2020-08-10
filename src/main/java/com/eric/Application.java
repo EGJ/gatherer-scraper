@@ -12,6 +12,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
@@ -64,6 +65,29 @@ public class Application {
         }
     }
 
+    /**
+     * This will get all of the cards in the "Master.txt" file and re-run the search on all the card names within.
+     * This method should only be used if additional/different data is extracted from the cards that does not currently
+     * exist in the cache.
+     */
+    private static void rerunSearch() throws IOException {
+        //Get full list of cards
+        Set<String> cards = new HashSet<>(FileUtils.readLines(new File("output/Master.txt"), Charset.defaultCharset()));
+
+        File backupCache = new File("output/CachedValues-backup.json");
+        //copyFile creates or overwrites the output file passed in.
+        FileUtils.copyFile(new File("output/CachedValues.json"), backupCache);
+
+        Set<CardInfo> cardInfoSet = searchForCards(cards);
+        writeCachedValues(cardInfoSet);
+
+        if (cardInfoSet.size() != cards.size()) {
+            System.out.println("Re-searched cards size (" + cardInfoSet.size() + ") != cards size (" + cards.size() + "). Some searches returned null");
+        } else {
+            FileUtils.deleteQuietly(backupCache);
+        }
+    }
+
     private static void searchForCards() throws IOException {
         Set<CardInfo> cachedValues = new HashSet<>(readCachedValues());
 
@@ -72,6 +96,24 @@ public class Application {
                 .map(Utility::toTitleCase)
                 .filter(cardName -> cardName != null && !cachedValues.contains(new CardInfo(cardName, null, null, null, null, null, null, null)))
                 .collect(Collectors.toSet());
+
+        Set<CardInfo> cardInfoSet = searchForCards(cardsToSearchFor);
+
+        FileWriter masterWriter = new FileWriter("output/Master.txt", true);
+        for (CardInfo cardAndCost : cardInfoSet) {
+            //TODO?: Allow sorting by other methods.
+            FileWriter writer = new FileWriter("output/cards/" + cardAndCost.getColorIdentity() + ".txt", true);
+            masterWriter.append(cardAndCost.getCardName()).append('\n');
+            writer.append(cardAndCost.getCardName()).append('\n');
+            writer.close();
+        }
+        masterWriter.close();
+
+        cachedValues.addAll(cardInfoSet);
+        writeCachedValues(cachedValues);
+    }
+
+    private static Set<CardInfo> searchForCards(Set<String> cardsToSearchFor) throws IOException {
         Set<String> invalidCardNames = new HashSet<>();
 
         Set<CardInfo> cardInfoSet = cardsToSearchFor.stream()
@@ -92,24 +134,13 @@ public class Application {
 
         WebScraper.quitDriver();
 
-
         if (invalidCardNames.size() != 0) {
             System.out.println("Invalid Card names:");
             invalidCardNames.forEach(System.out::println);
+            System.out.println();
         }
 
-        FileWriter masterWriter = new FileWriter("output/Master.txt", true);
-        for (CardInfo cardAndCost : cardInfoSet) {
-            //TODO?: Allow sorting by other methods.
-            FileWriter writer = new FileWriter("output/cards/" + cardAndCost.getColorIdentity() + ".txt", true);
-            masterWriter.append(cardAndCost.getCardName()).append('\n');
-            writer.append(cardAndCost.getCardName()).append('\n');
-            writer.close();
-        }
-        masterWriter.close();
-
-        cachedValues.addAll(cardInfoSet);
-        writeCachedValues(cachedValues);
+        return cardInfoSet;
     }
 
     private static void printValidCommanders() {
@@ -159,7 +190,7 @@ public class Application {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            return objectMapper.readValue(FileUtils.readFileToByteArray(fileToReadFrom), new TypeReference<Set<CardInfo>>() {
+            return objectMapper.readValue(FileUtils.readFileToByteArray(fileToReadFrom), new TypeReference<>() {
             });
         } catch (IOException e) {
             return Collections.emptySet();
